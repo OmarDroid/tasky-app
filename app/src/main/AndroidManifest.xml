@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Exact reminder alarms. USE_EXACT_ALARM covers API 33+ (install-time grant); the platform
+         IGNORES it below 33, so API 31-32 need SCHEDULE_EXACT_ALARM (default-granted, revocable —
+         the scheduler falls back to an inexact alarm if revoked). API 28-30 need neither. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- AlarmManager alarms don't survive reboot; BootCompletedReceiver reschedules them. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <application
+        android:name=".app.TaskyApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Tasky">
+        <receiver
+            android:name=".core.data.notification.ReminderReceiver"
+            android:exported="false" />
+        <!-- BOOT_COMPLETED is a protected broadcast (only the system can send it). -->
+        <receiver
+            android:name=".core.data.notification.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".app.MainActivity"
+            android:launchMode="singleTop"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Tasky.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Remove WorkManager's default App-Startup initializer so WorkManager initializes
+             on-demand and reads TaskyApp's Configuration.Provider, which installs the Koin-backed
+             SyncWorkerFactory. Without this, the default (reflection) factory tries the missing
+             SyncWorker(Context, WorkerParameters) constructor and crashes. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
+    </application>
+
+</manifest>
